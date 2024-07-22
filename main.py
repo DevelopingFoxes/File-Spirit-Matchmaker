@@ -45,6 +45,8 @@ import os
 from os import path
 from os.path import join, getsize
 from rich import print
+from rich.prompt import Prompt, Confirm
+from rich.markup import escape
 
 # === DEBUG ===
 from pprint import pprint
@@ -67,80 +69,112 @@ fileoutput = ""
 
 class directory:
     def __init__(self, path="", masterDir=0):
+        self._no_more_scans = False
         try:
 
-            self._path = path or self.validate_path(input("Input directory to scan: "))    
+            self._path = path or self.validate_path(input("Input directory to scan: "))
             # if(not self._path):
-                # break
-            self._masterDir = masterDir or self.validate_masterDir(input("Scan against this directory [y/n]? "))
-            self._list_of_files = self.explore_files(_path)
+            # break
+            self._masterDir = masterDir or self.validate_masterDir(
+                Prompt.ask(f"Scan against this directory [magenta]{escape("[y/n]")}?")
+            )
+            self._list_of_files, self._list_of_dirs, self._list_of_unkowns = (
+                self.explore_files(self._path)
+            )
 
-            
-       # except SpecialException:
+        # except SpecialException:
         #    raise ValueError("SPECIAL I AM 02")
         except ValueError:
-            print(ValueError, "[yellow] Catch me ")      
-            return None
+            print(ValueError, "[yellow] Catch me ")
+            self.explore_files_no_more_scans = True
+
+    """
+    Non recursive scandir of direcrory path 
+    Appends onlt files and not dirs to directory._list_of_files
+    """
 
     def explore_files(self, path):
         # Todo: if slow, do this in an async method / thread
         scanned_dir = os.scandir(path)
         file_list = []
+        dir_list = []
+        unkown_list = []
         for path in scanned_dir:
-            file_list.append(path)
-        return file_list
+            if os.path.isfile(path):
+                file_list.append(path)
+            elif os.path.isdir(path):
+                dir_list.append(path)
+            else:
+                unkown_list.append(path)
+                print("[yellow] Unkown path entry: ", path)
+
+        return file_list, dir_list, unkown_list
 
     def validate_path(self, path_input):
         # try:
-            # Filepath is empty, break
-            if not path_input:
-                raise ValueError("SPECIAL I AM 02")
-                return False
-            # Checks if filepath exists
-            if not path.exists(path_input):
-                print("Filepath does not exist")
-                raise ValueError("Path does not exist: ", path_input)
-                ## todo: loop back for new statement or ask to got to the parrent
+        # Filepath is empty, break
+        if not path_input:
+            raise ValueError("SPECIAL I AM 02")
+            return False
+        # Checks if filepath exists
+        if not path.exists(path_input):
+            print("[dark_orange] Filepath does not exist")
+            raise ValueError("Path does not exist: ", path_input)
+            ## todo: loop back for new statement or ask to got to the parrent
 
-            # Checks if dirPath is a dir
-            if path.isdir(path_input):
-                return path_input
+        # Checks if dirPath is a dir
+        if path.isdir(path_input):
+            return path_input
 
-                print(path_input, " has been added")
+            print(path_input, " has been added")
 
-            elif path.isfile(path_input):
-                # If dirPath is a file, assumes the same directory
+        elif path.isfile(path_input):
+            # If dirPath is a file, assumes the same directory
 
-                print("Converted path: '", path_input, "'")
-                path_input = path.dirname(path_input)
-                print("Into path directory:", path_input)
-                print(path_input, " has been added")
-                return path_input
-            else:
-                print("[red] Could not handle path, validate path and try again")
-        # except ValueError as error:
-        #     for item in error:
-        #         print(item)
+            print("Converted path: '", path_input, "'")
+            path_input = path.dirname(path_input)
+            print("Into path directory:", path_input)
+            print(path_input, " has been added")
+            return path_input
+        else:
+            print("[red] Could not handle path, validate path and try again")
 
-        #     for item in ValueError:
-        #         print(item)
-        #     # print("[Yellow] deb error:: ", dir(error), error.args, dir(ValueError))
-        #     # print("SPECIAL NOT I AM 01")
-            
-        #     raise ValueError("[red] Cannot handle file, unkown")
+    # except ValueError as error:
+    #     for item in error:
+    #         print(item)
 
-    def validate_masterDir(self, input):
+    #     for item in ValueError:
+    #         print(item)
+    #     # print("[Yellow] deb error:: ", dir(error), error.args, dir(ValueError))
+    #     # print("SPECIAL NOT I AM 01")
+
+    #     raise ValueError("[red] Cannot handle file, unkown")
+
+    def validate_masterDir(self, value_input):
         try:
-            for val in ["", 0, "n"]:
-                if input == False:
-                    return input
-            for val in ["y", 1]:
-                if input == True:
-                    return input
+            if value_input == "":
+                print("[yellow] Blank is assumes as 'no'")
+                val = Prompt.ask(
+                    f"[blue] Confirm with 'enter' for [cyan]'n'[/cyan] or type {escape("[y/n]")}..."
+                )
+                if val == "":
+                    return False
+                else:
+                    return self.validate_masterDir(val)
+
+            for val in ["n", 0, "no"]:
+                if value_input == val:
+                    return False
+            for val in ["y", 1, "yes"]:
+                if value_input == val:
+                    return True
             else:
                 raise ValueError("[yellow] Invalid input, write 'y' or 'n'")
         except ValueError:
-            val = self.validate_masterDir(input("Scan against this directory [y/n]? "))
+            val = input(
+                f"[yellow] Invalid input, Scan against this directory {escape("[y/n]")}? "
+            )
+            val = self.validate_masterDir(val)
             return val
 
 
@@ -214,14 +248,21 @@ def search_directories_for_similar_files(directory_list):
 # ===== RUNNING =====
 
 _dir = ""
-while (_dir is not None):
+while True:
     # Todo: Take inputs
     # Todo: Add inputs to list
 
     _dir = directory()
-    print(type(_dir))
 
-    if(_dir is not type(None)):
+    #! -- DEBUG --
+    # print(type(_dir))
+    # print(dir(_dir))
+    if _dir._no_more_scans is False:
+        for _path in _dir._list_of_files:
+            print("[cyan] " + _path.path)
+        # print(_path.stat().st_type)
+
+    if _dir is False:
         directory_list.append(_dir)
     else:
         break
@@ -278,4 +319,3 @@ print("[yellow] Got out of the loop")
 
 # print("")
 # file_output = search_directories_for_similar_files(directory_list)
-
