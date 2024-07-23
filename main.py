@@ -47,6 +47,7 @@ from os.path import join, getsize
 from rich import print
 from rich.prompt import Prompt, Confirm
 from rich.markup import escape
+import shutil
 
 # === DEBUG ===
 from pprint import pprint
@@ -59,24 +60,40 @@ from pprint import pprint
 
 # Creates public list and public string
 directory_list = []
-files_list = []
-fileoutput = ""
+file_set = set()
+file_output = ""
 
 # print(Fore.RED + "I AM RED")
 
 # === CLASSES ===
 
+"""
+Manages directory, and file paths
+:path: Path for dir
+:srcDirDef: Default value for if this is a soruce directory
+"""
+
 
 class directory:
-    def __init__(self, path="", masterDir=0):
+    def __init__(self, path="", masterDir=0, srcDirDef="n"):
+        # You should actually use set and get methods for input and output validation, but nah. Too lazy :3
         self._no_more_scans = False
         try:
 
-            self._path = path or self.validate_path(input("Input directory to scan: "))
+            self._path = path or self.validate_path(
+                Prompt.ask(
+                    f"Input directory to scan [blue]{escape("[or press 'enter' to continue]")}[/blue]"
+                )
+            )
             # if(not self._path):
             # break
-            self._masterDir = masterDir or self.validate_masterDir(
-                Prompt.ask(f"Scan against this directory [magenta]{escape("[y/n]")}?")
+
+            # If this is a directory to be scanned against
+            self._source_dir = masterDir or self.validate_source_dir(
+                Prompt.ask(
+                    f"Scan against this directory [magenta]{escape("[y/n]")}[/magenta]? def:",
+                    default=srcDirDef,
+                )
             )
             self._list_of_files, self._list_of_dirs, self._list_of_unkowns = (
                 self.explore_files(self._path)
@@ -86,7 +103,7 @@ class directory:
         #    raise ValueError("SPECIAL I AM 02")
         except ValueError:
             print(ValueError, "[yellow] Catch me ")
-            self.explore_files_no_more_scans = True
+            self._no_more_scans = True
 
     """
     Non recursive scandir of direcrory path 
@@ -118,8 +135,9 @@ class directory:
             return False
         # Checks if filepath exists
         if not path.exists(path_input):
-            print("[dark_orange] Filepath does not exist")
-            raise ValueError("Path does not exist: ", path_input)
+            print("[dark_orange] Path does not exist")
+            path_input = input("Correct the path and input the path again: ")
+            return self.validate_path(path_input)
             ## todo: loop back for new statement or ask to got to the parrent
 
         # Checks if dirPath is a dir
@@ -131,10 +149,10 @@ class directory:
         elif path.isfile(path_input):
             # If dirPath is a file, assumes the same directory
 
-            print("Converted path: '", path_input, "'")
+            print("[grey35]Converted path: '" + path_input + "'")
             path_input = path.dirname(path_input)
-            print("Into path directory:", path_input)
-            print(path_input, " has been added")
+            print("[grey35]Into path directory: [white]" + path_input)
+            # print(path_input, " has been added")
             return path_input
         else:
             print("[red] Could not handle path, validate path and try again")
@@ -150,7 +168,7 @@ class directory:
 
     #     raise ValueError("[red] Cannot handle file, unkown")
 
-    def validate_masterDir(self, value_input):
+    def validate_source_dir(self, value_input):
         try:
             if value_input == "":
                 print("[yellow] Blank is assumes as 'no'")
@@ -160,13 +178,17 @@ class directory:
                 if val == "":
                     return False
                 else:
-                    return self.validate_masterDir(val)
+                    return self.validate_source_dir(val)
 
             for val in ["n", 0, "no"]:
                 if value_input == val:
+                    print(
+                        "Will not scan against provided directory: [cyan]" + value_input
+                    )
                     return False
             for val in ["y", 1, "yes"]:
                 if value_input == val:
+                    print("Will scan against provided directory: [cyan]" + value_input)
                     return True
             else:
                 raise ValueError("[yellow] Invalid input, write 'y' or 'n'")
@@ -174,8 +196,55 @@ class directory:
             val = input(
                 f"[yellow] Invalid input, Scan against this directory {escape("[y/n]")}? "
             )
-            val = self.validate_masterDir(val)
+            val = self.validate_source_dir(val)
             return val
+
+
+# ===== FUNCTIONS =====
+
+
+def validate_output_path(path_input):
+    # Filepath is empty, break
+    if not path_input:
+        print("[dark_orange] Path for output is empty, provide a path for output")
+        path_input = input("Output path: ")
+        return validate_output_path(path_input)
+
+    # Checks if filepath exists
+    if not path.exists(path_input):
+        print("Output path does not exist: [dark_orange]" + path.realpath(path_input))
+        create_dir = Confirm.ask(
+            "[yellow] Provided path does not exist, want to create one?",
+            choices=["y", "n"],
+        )
+        if create_dir == "y":
+            return path_input
+        else:
+            validate_output_path(input("Provide a path for file output: "))
+
+        # Todo: if create_dir == true ==>  mkdir / create dir else ask for input
+    # print("[dark_orange] Will implement later to create dir")
+
+    # Checks if dirPath is a dir
+    if path.isdir(path_input):
+        print("Will output to: ", path_input)
+        return path_input
+
+    elif path.isfile(path_input):
+        # If dirPath is a file, assumes the same directory
+        output_dir = Confirm.ask(
+            "[dark_orange] Path for output is to a file, want to output to same direcrory as the file?",
+            choices=["y", "n"],
+        )
+        if output_dir == "y":
+            path_input = path.dirname(path_input)
+            print("Converted path to: '", path_input, "'")
+        else:
+            validate_output_path(input("Provide a path for file output: "))
+
+        return path_input
+    else:
+        print("[red] Could not handle path, validate path and try again")
 
 
 # def __repr__(self):
@@ -232,25 +301,179 @@ def search_directories_for_similar_files(directory_list):
 
 
     """
+    # for master_directory in directory_list:
+    #     if master_directory._source_dir == True:
+    #         for scan_directory in directory_list:
+    #             if master_directory != scan_directory:
+    # # TODO: Scann each file w/o ext against all other and add its path to a 'set' as 'set's  dosen't tolerate duplicates
 
-    # for _dir in directory_list:
-    #     pprint((_dir))
-    #     for filepath in _dir.list_of_files:
-    #         print((filepath))
-    #     #     print((filepath.path))
-    #     #     print((filepath.name))
-    #     #     print((filepath.inode()))
-    #     #     print(dir(filepath.stat()))
-    #     #     print((path.splitext(filepath.name)[1]))
-    # todo: where split(filepath)[1] against osther dirs is true; copy
+    # '''
+    # for each master_file in master_dir:
+    #     for each scan_file in scan_dir:
+    #         if master_file_no_ext == scan_file_no_ext
+    #             add filepath for both to file_list_set
+    # '''
+
+    # '''
+    # :master_dir:
+    # :compare_dir:
+
+    # foreach master_dir -> put file names in a set
+
+    # then
+    # compare compare_dir.name aginst set. If match  -> 3rd_prt_set
+
+    # loop master_dir -> map(name, path)
+    #     put in set
+
+    # loop compare_dor -> map(name, path) against set
+    #     if true
+    #         set to dir.
+
+    # '''
+    source_dir = set()
+
+    for _directory in directory_list:
+        if _directory._source_dir == True:
+            for file_obj in _directory._list_of_files:
+                source_dir.add(path.splitext(file_obj.name)[0])
+                # ? Assumes that if a file is in source_directory, it is regarldes of a pair added to file_set
+                file_set.add(file_obj.path)
+
+    for _file in source_dir:
+        print(_file)
+        # print(dir(_file))
+        # print(path.splitext(_file.name)[0])
+        # print(path.splitext(_file.name)[1])
+        # print((_file.path))
+        # break
+
+    for _directory in directory_list:
+        if _directory._source_dir == False:
+            for file_obj in _directory._list_of_files:
+
+                if path.splitext(file_obj.name)[0] in source_dir:
+                    file_set.add(file_obj.path)
+
+    for _file in file_set:
+        print(_file)
+
+
+def move_files(file_paths, file_output):
+    # Todo: Move all files from file_set to file_output
+    # Todo: If file_output does not exist, create dir
+    try:
+
+        for file_source in file_set:
+            try:
+                shutil.move(file_source, file_output)
+                print("[orange4] File was moved: " + file_source)
+
+            except FileExistsError as err:
+                print(FileExistsError, err)
+                for _err in FileExistsError:
+                    print(_err)
+                print(
+                    FileExistsError,
+                    err,
+                    "[Red] 89 error WARNING FILE OVERWRITE CALNCELS ",
+                )
+            except (NotADirectoryError, OSError) as err:
+
+                print(
+                    Exception,
+                    OSError,
+                    "[red] WARNING: POTENTIAL DUPPLICATE FILE NAME",
+                    err,
+                )
+                print(file_source)
+                print("Name of file: ", path.split(file_source))
+                print("[yellow]DEB:: Split: ", path.split(file_source))
+                print("[yellow]DEB:: splitext: ", path.splitext(file_source))
+                print("[yellow]DEB:: basename: ", path.basename(file_source))
+                print(
+                    "[yellow]DEB:: splittext(basename): ",
+                    path.splitext(path.basename(file_source)),
+                )
+                # ! IF Exception arises. IT IS HERE you prompt for filename-change and moves the file, then it goes back to the loop
+                # ? If you sugest duplicate filename "file.txt" --> "file-1.txt", maybe check file_set for "file-1.txt" just in case, ...
+                # ? ... and of course ask user of thier opinion
+                # TODO: If exception. Fix dupplicate file, ask user or something. The go back and continue to move files
+                print("")
+                print(file_source)
+                temp_path = path.split(path_input)[0]  # aka. dirname
+                temp_file = path.split(path_input)[1]  # aka. basename
+                temp_file_name = path.splitext(temp_file)[0]
+                temp_file_ext = path.splitext(temp_file)[1]
+                print(temp_path, temp_file, temp_file_name, temp_file_ext)
+
+                count = 1
+                while(True):
+                    temp_file_name_new = temp_file_name + str(count)
+                    if temp_file_name_new in file_set:
+                        break
+                    else:
+                        count+=1
+
+                temp_prompt = Prompt.ask(
+                    f"[red] Duplicate file name found: {temp_file_name}. \n What action to do? Default rename [blue]{escape("[ENTER]")}[/blue]: {temp_file_name_new}?",
+                    choices=["Yes", "Skip", "Replace", "Custom Name"],
+                    default="Yes",
+                )
+                match temp_prompt:
+                    case ("Yes", "yes", "y", 1):
+                        shutil.move(path.join(temp_path, temp_file_name_new, temp_file_ext), file_output)
+                        print("[orange2] File was moved: " + path.join(temp_path, temp_file_name_new, temp_file_ext))
+                    case ("Skip", "skip", "s"):
+                        print(f"[orange2] File {file_source} was skipped")
+                    case ("Replace", "replace", "r"):
+                        os.remove(file_output)
+                        shutil.move(file_source, file_output)
+                        print(f"[orange2] File {file_source} was replaced")
+
+                    case (
+                        "Custom Name",
+                        "custom name",
+                        "c",
+                        "cn",
+                    ):
+                        temp_file_name_new = Prompt.ask("Select new file name (without extention): ")
+                        shutil.move(path.join(temp_path, temp_file_name_new, temp_file_ext), file_output)
+                        print("[orange2] File was moved: " + path.join(temp_path, temp_file_name_new, temp_file_ext))
+
+    except FileExistsError as err:
+        print(FileExistsError, err)
+        for _err in FileExistsError:
+            print(_err)
+        print("[Red] 89 error WARNING FILE OVERWRITE CALNCELS ")
+    except (NotADirectoryError, OSError) as err:
+
+        print(Exception, "[red] WARNING: POTENTIAL OVERWRTIRES, CANCELS PROCESS", err)
+        # TODO: If exception. Fix dupplicate file, ask user or something. The go back and continue to move files
+
+    except OSError:
+        pass
 
 
 # ===== RUNNING =====
 
-_dir = ""
+
+# _dir = ""
+# Iterates and gets all dirs to be scanned
+
+_dir = directory("", 0, "y")
+if _dir._no_more_scans is False:
+    directory_list.append(_dir)
+print(_dir._path)
+print(_dir._source_dir)
+print(_dir._list_of_files)
+
 while True:
-    # Todo: Take inputs
-    # Todo: Add inputs to list
+    # // Todo: Take inputs
+    # // Todo: Add inputs to list
+    # Todo: Check that there are at least one dir to scan against and at least one dir to scan for
+    # Todo: Could be done with simple global booleans
+    # Todo: Add a duplicate path filter
 
     _dir = directory()
 
@@ -258,19 +481,28 @@ while True:
     # print(type(_dir))
     # print(dir(_dir))
     if _dir._no_more_scans is False:
+        print("[yellow] DEB:: Printing all files")
         for _path in _dir._list_of_files:
             print("[cyan] " + _path.path)
         # print(_path.stat().st_type)
+        print("")
 
-    if _dir is False:
+    if _dir._no_more_scans is False:
         directory_list.append(_dir)
     else:
         break
 
-print("[yellow] Got out of the loop")
+file_output = validate_output_path(input("Path for file output: "))
+
+print("[yellow]DEB:: Got out of the loop")
+
+search_directories_for_similar_files(directory_list)
+
+move_files(file_set, file_output)
+
+input("Press ENTER to exit the program...")
 
 
-# Todo: Scan input list against one another
 # Todo: If true, put all of those in thier own place
 # Todo: Move all that is true
 
@@ -319,3 +551,6 @@ print("[yellow] Got out of the loop")
 
 # print("")
 # file_output = search_directories_for_similar_files(directory_list)
+
+
+# DEFAULT FOR SCAN AGIANST IN PROMPT CLI --> (n)
