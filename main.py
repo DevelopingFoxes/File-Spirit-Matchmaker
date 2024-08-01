@@ -220,7 +220,7 @@ def validate_output_path(path_input):
         if create_dir == "y":
             return path_input
         else:
-            validate_output_path(input("Provide a path for file output: "))
+            return validate_output_path(input("Provide a path for file output: "))
 
         # Todo: if create_dir == true ==>  mkdir / create dir else ask for input
     # print("[dark_orange] Will implement later to create dir")
@@ -240,7 +240,7 @@ def validate_output_path(path_input):
             path_input = path.dirname(path_input)
             print("Converted path to: '", path_input, "'")
         else:
-            validate_output_path(input("Provide a path for file output: "))
+            return validate_output_path(input("Provide a path for file output: "))
 
         return path_input
     else:
@@ -367,7 +367,7 @@ def move_files(file_paths, file_output):
         for file_source in file_set:
             try:
                 shutil.move(file_source, file_output)
-                print("[orange4] File was moved: " + file_source)
+                print("[orange4]Moved file from: " + file_source)
 
             except FileExistsError as err:
                 print(FileExistsError, err)
@@ -378,7 +378,8 @@ def move_files(file_paths, file_output):
                     err,
                     "[Red] 89 error WARNING FILE OVERWRITE CALNCELS ",
                 )
-            except (NotADirectoryError, OSError) as err:
+            # except (NotADirectoryError, OSError) as err:
+            except Exception as err:
 
                 print(
                     Exception,
@@ -398,48 +399,81 @@ def move_files(file_paths, file_output):
                 # ! IF Exception arises. IT IS HERE you prompt for filename-change and moves the file, then it goes back to the loop
                 # ? If you sugest duplicate filename "file.txt" --> "file-1.txt", maybe check file_set for "file-1.txt" just in case, ...
                 # ? ... and of course ask user of thier opinion
-                # TODO: If exception. Fix dupplicate file, ask user or something. The go back and continue to move files
+                # TODO: S: If exception. Fix dupplicate file, ask user or something. The go back and continue to move files
+                # Todo: M: Loop exits when exception is casted. Continue loop
+                # Todo: M: Dupplicate file HAS NOT BEEN MOVED
                 print("")
                 print(file_source)
-                temp_path = path.split(path_input)[0]  # aka. dirname
-                temp_file = path.split(path_input)[1]  # aka. basename
+                temp_path = path.split(file_source)[0]  # aka. dirname
+                temp_file = path.split(file_source)[1]  # aka. basename
                 temp_file_name = path.splitext(temp_file)[0]
                 temp_file_ext = path.splitext(temp_file)[1]
+                # Todo: C: Show file info, like timestamps, size etc...
                 print(temp_path, temp_file, temp_file_name, temp_file_ext)
 
                 count = 1
-                while(True):
-                    temp_file_name_new = temp_file_name + str(count)
-                    if temp_file_name_new in file_set:
+                while True:
+                    temp_file_name_new = temp_file_name + "-" + str(count)
+                    if not temp_file_name_new in file_set:
                         break
                     else:
-                        count+=1
-
+                        count += 1
+                print(
+                    f"[red]Duplicate file name found: [white]{temp_file_name} ({temp_file_ext})"
+                )
                 temp_prompt = Prompt.ask(
-                    f"[red] Duplicate file name found: {temp_file_name}. \n What action to do? Default rename [blue]{escape("[ENTER]")}[/blue]: {temp_file_name_new}?",
+                    f"What action to do?[cyan] Default rename to: [cyan]{temp_file_name_new + "(" +temp_file_ext})? [blue]{escape("[ENTER]")}[/blue]:",
                     choices=["Yes", "Skip", "Replace", "Custom Name"],
                     default="Yes",
                 )
-                match temp_prompt:
-                    case ("Yes", "yes", "y", 1):
-                        shutil.move(path.join(temp_path, temp_file_name_new, temp_file_ext), file_output)
-                        print("[orange2] File was moved: " + path.join(temp_path, temp_file_name_new, temp_file_ext))
-                    case ("Skip", "skip", "s"):
-                        print(f"[orange2] File {file_source} was skipped")
-                    case ("Replace", "replace", "r"):
-                        os.remove(file_output)
-                        shutil.move(file_source, file_output)
-                        print(f"[orange2] File {file_source} was replaced")
 
-                    case (
-                        "Custom Name",
-                        "custom name",
-                        "c",
-                        "cn",
-                    ):
-                        temp_file_name_new = Prompt.ask("Select new file name (without extention): ")
-                        shutil.move(path.join(temp_path, temp_file_name_new, temp_file_ext), file_output)
-                        print("[orange2] File was moved: " + path.join(temp_path, temp_file_name_new, temp_file_ext))
+                if temp_prompt == "Yes" or "yes" or "y" or 1:
+                    _temp_file_output = path.join(
+                        file_output, temp_file_name_new + temp_file_ext
+                    )
+                    # print(
+                    #     "[yellow]DEB:: // New:"
+                    #     + path.join(temp_path, temp_file_name_new + temp_file_ext)
+                    # )
+                    # print("[yellow]DEB:: Old:" + file_source)
+                    # print("[yellow]DEB:: Out:" + file_output)
+                    # print("[yellow]DEB:: New Out:" + _temp_file_output)
+                    #! shutil throws: "[WinError 3] The system cannot find the path specified"
+                    print("")
+                    print("[yellow]DEB:: Filesource: [yellow2]", file_source)
+                    print("[yellow]DEB:: New file output: [yellow2]", _temp_file_output)
+                    print(
+                        "[yellow]DEB:: Is file_soruce a file?: [yellow2]",
+                        os.path.isfile(file_source),
+                    )
+                    print("[yellow]DEB:: New file output: [yellow2]", _temp_file_output)
+                    shutil.move(
+                        file_source,
+                        _temp_file_output,
+                    )
+                    print(
+                        "[orange4] File was moved: "
+                        + path.join(temp_path, temp_file_name_new + temp_file_ext)
+                    )
+                elif temp_prompt == "Skip" or "skip" or "s":
+                    print(f"[orange4] File {file_source} was skipped")
+                elif temp_prompt == "Replace" or "replace" or "r":
+                    os.remove(file_output)
+                    shutil.move(file_source, file_output)
+                    print(f"[orange4] File {file_source} was replaced")
+
+                elif temp_prompt == ("Custom Name" or "custom name" or "c" or "cn"):
+                    temp_file_name_new = Prompt.ask(
+                        "Select new file name (without extention): "
+                    )
+                    shutil.move(
+                        path.join(temp_path, temp_file_name_new + temp_file_ext),
+                        file_output,
+                    )
+                    print(
+                        "[orange4] File was moved: "
+                        + path.join(temp_path, temp_file_name_new + temp_file_ext)
+                    )
 
     except FileExistsError as err:
         print(FileExistsError, err)
