@@ -212,12 +212,24 @@ def validate_output_path(path_input):
 
     # Checks if filepath exists
     if not path.exists(path_input):
-        print("Output path does not exist: [dark_orange]" + path.realpath(path_input))
+        print(
+            "[dark_orange]Output path does not exist: [orange4]"
+            + path.realpath(path_input)
+        )
         create_dir = Confirm.ask(
             "[yellow] Provided path does not exist, want to create one?",
             choices=["y", "n"],
         )
-        if create_dir == "y":
+        if create_dir:
+            try:
+                os.makedirs(path_input)
+                if path.isdir(path_input):
+                    print("[yellow]Filepath has been created: ", path_input)
+                else: 
+                    print("[red]Something whent wront :(")                    
+            except Exception as err:
+                print(err)
+                raise Exception
             return path_input
         else:
             return validate_output_path(input("Provide a path for file output: "))
@@ -396,12 +408,12 @@ def move_files(file_paths, file_output):
                     "[yellow]DEB:: splittext(basename): ",
                     path.splitext(path.basename(file_source)),
                 )
-                # ! IF Exception arises. IT IS HERE you prompt for filename-change and moves the file, then it goes back to the loop
+                # // ! IF Exception arises. IT IS HERE you prompt for filename-change and moves the file, then it goes back to the loop
                 # ? If you sugest duplicate filename "file.txt" --> "file-1.txt", maybe check file_set for "file-1.txt" just in case, ...
                 # ? ... and of course ask user of thier opinion
-                # TODO: S: If exception. Fix dupplicate file, ask user or something. The go back and continue to move files
-                # Todo: M: Loop exits when exception is casted. Continue loop
-                # Todo: M: Dupplicate file HAS NOT BEEN MOVED
+                # // TODO: S: If exception. Fix dupplicate file, ask user or something. The go back and continue to move files
+                # // Todo: M: Loop exits when exception is casted. Continue loop
+                # // Todo: M: Dupplicate file HAS NOT BEEN MOVED
                 print("")
                 print(file_source)
                 temp_path = path.split(file_source)[0]  # aka. dirname
@@ -438,7 +450,7 @@ def move_files(file_paths, file_output):
                     # print("[yellow]DEB:: Old:" + file_source)
                     # print("[yellow]DEB:: Out:" + file_output)
                     # print("[yellow]DEB:: New Out:" + _temp_file_output)
-                    #! shutil throws: "[WinError 3] The system cannot find the path specified"
+                    # // ! shutil throws: "[WinError 3] The system cannot find the path specified"
                     print("")
                     print("[yellow]DEB:: Filesource: [yellow2]", file_source)
                     print("[yellow]DEB:: New file output: [yellow2]", _temp_file_output)
@@ -458,8 +470,14 @@ def move_files(file_paths, file_output):
                 elif temp_prompt == "Skip" or "skip" or "s":
                     print(f"[orange4] File {file_source} was skipped")
                 elif temp_prompt == "Replace" or "replace" or "r":
-                    os.remove(file_output)
-                    shutil.move(file_source, file_output)
+                    _prmp = Prompt.ask("[red]You are sure you want to REPLACE the file", choices=['n','y'],default='y')
+                    if(_prmp == "y"):
+                        os.remove(file_output)
+                        shutil.move(file_source, file_output)
+                    else:
+                        raise Exception
+                        # Todo: S: Make function move_files call a "move_file" funciton so it can be called from other sources
+
                     print(f"[orange4] File {file_source} was replaced")
 
                 elif temp_prompt == ("Custom Name" or "custom name" or "c" or "cn"):
@@ -507,11 +525,14 @@ while True:
     # // Todo: Add inputs to list
     # Todo: Check that there are at least one dir to scan against and at least one dir to scan for
     # Todo: Could be done with simple global booleans
-    # Todo: Add a duplicate path filter
-
+    # // Todo: Add a duplicate path filter
+    # Todo: S: Option wherter to copy or move files etc.
+    # Todo: C: Seperate files into different sub cateogies based on extentions (could flags certain ext.)
+    # Todo: S: Colour schema does not work well in black terminals (eg. CMD), fix a colourschema variables for easier change and management
+    # ! CREATE NEW DIRECTORY DOES NOT WORK! A FILE (TOTALING PROBABLY THE LAST MOVED FILE's SIZE) IS CREATED IN IT'S STEAD
     _dir = directory()
 
-    #! -- DEBUG --
+    # * -- DEBUG --
     # print(type(_dir))
     # print(dir(_dir))
     if _dir._no_more_scans is False:
@@ -553,7 +574,7 @@ input("Press ENTER to exit the program...")
 #         print("not broken")
 
 
-# # ! DEBUG
+# # * DEBUG
 # if not path_input:
 #     print("[yellow] path_input set to: " + r"C:\Users\_\Documents\temp\1\1.txt" + "\n")
 #     path_input = r"C:\Users\_\Documents\temp\1\.txt"
@@ -571,7 +592,7 @@ input("Press ENTER to exit the program...")
 # # DEB
 # print("deb: directory_list:", directory_list)
 
-# # ! PUT ME BACK
+# # * PUT ME BACK
 # # input("Input next directory to scan: ")
 # path_input = r"C:\Users\_\Documents\temp\2\2.png"
 # validated_path = validate_path(path_input)
