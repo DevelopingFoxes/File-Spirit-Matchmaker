@@ -22,7 +22,8 @@ Created on Wed Jul  3 15:47:04 2024
     # Todo: C: Seperate files into different sub cateogies based on extentions (could flags certain ext.)
     # Todo: S: Colour schema does not work well in black terminals (eg. CMD), fix a colourschema variables for easier change and management
     # Todo: S: See 'todo' in funciton move_files()
-    # Duplicate files options: yes to all
+    # Todo: S: Duplicate files options: yes to all
+    # Todo: M/S: Handling of multiple file extentions
 
 # === IMPORTS ===
 
