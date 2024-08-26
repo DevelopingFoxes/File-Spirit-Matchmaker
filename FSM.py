@@ -20,31 +20,39 @@ def command_line_interface_argument_parser():
 
     # Todo: Arguments
     # Postional:
-    # Source,
-    # Search...
+    #   Source,
+    #   Search...
     # Non positional:
-    # Source:<path...>,
-    # Search:<path...>,
-    # Destination:<path...>
+    #   Source:<path...>,
+    #   Search:<path...>,
+    #   Destination:<path...>
     # Grouped Action Flags (only allow one):
-    # Copy,
-    # Move,
-    # --to-file:<path|| -d:path >
+    #   Copy,
+    #   Move,
+    #   --to-file:<path|| -d:path >
     # Misc arguments:
-    # quiet,
-    # verbose(include debug/log levels in code),
-    # force (dunno for what),
-    # dry-run (similar to --to-file but prints to terminal)
-    # "dont-include-source-findings-except-for-matched-pairs" arguments (but a better name)
+    #   quiet,
+    #   verbose(include debug/log levels in code),
+    #   force? (dunno for what, maybe as in ignore duplicates and overwrite),
+    #   dry-run (similar to --to-file but prints to terminal)
+    #   "dont-include-source-findings-except-for-matched-pairs" arguments (but a better name)
+    #   duplicate-handling (overwrite/auto-extention/manual-comparision/idk)
+    # #
 
     # Initiates argparser
     # passed argumnet allows line/breaks in help text argument
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 
+    # ! Changed in version 3.11: 
+    # ! Calling add_argument_group() on an argument group is deprecated. 
+    # ! This feature was never supported and does not always work correctly. 
+    # ! The function exists on the API by accident through inheritance and will be removed in the future. 
+    # ! https://docs.python.org/3/library/argparse.html#argument-groups
+    
     # -- Source Group --
     source_args = parser.add_argument_group(
         "Source",
-        description="Source directory arguments. \nOne or multiple directories as a basis to compare files from \n",
+        description="Source directory arguments. \nOne or multiple directories as a basis to compare files from\n",
     )
     source_args.add_argument(
         "source",
@@ -54,17 +62,40 @@ def command_line_interface_argument_parser():
         help="Single positional argument for source directory path",
     )
     source_args.add_argument(
-        "-s",
+        "-S",
         "--source",
-        # action="append",
-        nargs='+',
+        action="append",
+        nargs="+",
         # type=pathlib.Path,
         help="Specifies single or mulitple source direcetory paths",
     )
+
+    # --- Search Group ---
+    search_args = parser.add_argument_group(
+        "Search",
+        "Search directory arguments. \nOne or multiple directories to search for files in of\n",
+    )
+    search_args.add_argument(
+        "search",
+        nargs="*",
+        # type=pathlib.Path,
+        help="Single positional argument for source directory path",
+    )
+    search_args.add_argument(
+        "-s",
+        "--search",
+        action="extend",
+        nargs="+",
+        # type=pathlib.Path,
+        help="Specifies single or mulitple search direcetory paths",
+    )
+
     args = parser.parse_args()
-    
+
     # Dev: TEMP OUTPUT
     print(args)
+
+
 
 # === RUNNING ===
 command_line_interface_argument_parser()
