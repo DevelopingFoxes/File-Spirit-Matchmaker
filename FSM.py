@@ -43,12 +43,16 @@ def command_line_interface_argument_parser():
     # passed argumnet allows line/breaks in help text argument
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 
-    # ! Changed in version 3.11: 
-    # ! Calling add_argument_group() on an argument group is deprecated. 
-    # ! This feature was never supported and does not always work correctly. 
-    # ! The function exists on the API by accident through inheritance and will be removed in the future. 
-    # ! https://docs.python.org/3/library/argparse.html#argument-groups
-    
+    # // ! Changed in version 3.11:
+    # // ! Calling add_argument_group() on an argument group is deprecated.
+    # // ! This feature was never supported and does not always work correctly.
+    # // ! The function exists on the API by accident through inheritance and will be removed in the future.
+    # // ! https://docs.python.org/3/library/argparse.html#argument-groups
+    # * Note: Groups are not depricated, just groupcall ontop of groups
+
+    #   Argument order by DOCs
+    #   ArgumentParser.add_argument(name or flags...[, action][, nargs][, const][, default][, type][, choices][, required][, help][, metavar][, dest])
+
     # -- Source Group --
     source_args = parser.add_argument_group(
         "Source",
@@ -56,17 +60,15 @@ def command_line_interface_argument_parser():
     )
     source_args.add_argument(
         "source",
-        action="store",
+        action="extend",
         nargs="?",
-        # type=pathlib.Path,
         help="Single positional argument for source directory path",
     )
     source_args.add_argument(
         "-S",
         "--source",
-        action="append",
+        action="extend",
         nargs="+",
-        # type=pathlib.Path,
         help="Specifies single or mulitple source direcetory paths",
     )
 
@@ -77,8 +79,8 @@ def command_line_interface_argument_parser():
     )
     search_args.add_argument(
         "search",
+        action="extend",
         nargs="*",
-        # type=pathlib.Path,
         help="Single positional argument for source directory path",
     )
     search_args.add_argument(
@@ -86,7 +88,6 @@ def command_line_interface_argument_parser():
         "--search",
         action="extend",
         nargs="+",
-        # type=pathlib.Path,
         help="Specifies single or mulitple search direcetory paths",
     )
 
@@ -94,7 +95,6 @@ def command_line_interface_argument_parser():
 
     # Dev: TEMP OUTPUT
     print(args)
-
 
 
 # === RUNNING ===
